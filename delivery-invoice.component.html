@@ -1,0 +1,311 @@
+<div *ngIf="selectType">
+  <div class="row m_box">
+    <div class="col-lg-6 col-md-12 col-sm-12 col-xs-12">
+      <p class="mainButtons" (click)="advanceInvoice('advance')">Advance Invoice</p>
+      <p class="bottomText">Choose this option if the depositor wants to pay an estimated amount in partial or full.</p>
+    </div>
+    <div class="col-lg-6 col-md-12 col-sm-12 col-xs-12">
+      <p class="mainButtons" (click)="invoiceAfterDel('afterDel')">Invoice After Delivery</p>
+      <p class="bottomText">Choose this option if the depositor is taking partial or full delivery of their goods.</p>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="invoiceSummary" style="padding-top: 2%;
+background-color: whitesmoke;height: 100%;">
+  <div *ngIf="appdetails" style="margin: 0% 15%;
+  padding: 20px;
+  background-color: white;
+  box-shadow: 0 0 10px 10px #e8e8e866;">
+    <p style="margin: 3% 0;
+    color: black;">Invoice for customer <b>{{uId}}</b> for WHR
+      <b>{{appdetails.blockchainReceiptId}}</b></p>
+    <div *ngIf="genInvoices.length != 0">
+      <h2 style="font-size: 24px;
+    font-weight: 500;
+    margin-bottom: 16px;">Past Invoices</h2>
+      <p *ngFor="let inv of genInvoices;let i=index;">{{i+1}}. Invoice <b style="cursor: pointer;color: #1c942b;"
+          (click)="viewOldInvoice(inv)">#{{inv.invoiceNumber}}</b>
+        <span *ngIf="inv.status.paid" style="color: #1c942b;" class="paidOnv">Paid</span>
+        <span *ngIf="!inv.status.paid" class="paidOnv">Unpaid</span>
+        <span *ngIf="!inv.status.paid" class="uploadRecs" (click)="uploadRecModal(inv)">Upload Receipt</span>
+        <span *ngIf="inv.status.paid" class="uploadRecs" (click)="viewOldInvoice(inv)">Print Receipt</span>
+      </p>
+    </div>
+    <div *ngIf="!advanceInvoiceExist || newDeliveryExist">
+      <!-- <div> -->
+      <h2 style="font-size: 24px;
+    font-weight: 500;
+    margin-bottom: 16px;">WHR Details</h2>
+      <div class="row">
+        <div class="col-6">
+          <div class="row mbpvl">
+            <div class="col-6">
+              <p><b>Type of Commodity</b></p>
+              <p><b>Variety</b></p>
+              <p><b>Total WHR Value</b></p>
+              <p><b>Total Quantity</b></p>
+              <p class="valueV">{{appdetails.depositQty}} {{appdetails.depositUom}}</p>
+              <p class="valueV">{{appdetails.noOfBags}} Bags</p>
+            </div>
+            <div class="col-6">
+              <p class="valueV">{{appdetails.commodityName}}</p>
+              <p class="valueV">{{appdetails.comVariety}}</p>
+              <p class="valueV">Rs {{appdetails.totalReceiptValue}}</p>
+              <p><b>Remaining Quantity</b></p>
+              <p class="valueV">{{getRemainingQty()}} {{appdetails.depositUom}}</p>
+              <p class="valueV">{{getRemainingBags()}} Bags</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="row mbpvl" *ngIf="farmerDetails">
+            <div class="col-6">
+              <p class="mainBoldTitle"><b>Depositor Name</b></p>
+              <p class="mainBoldTitle"><b>Depositor Code</b></p>
+            </div>
+            <div class="col-6">
+              <p class="valueV">{{farmerDetails.name}}</p>
+              <p class="valueV">{{farmerDetails.uniqueCode}}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="mainBoldTitle" style="margin-bottom: 0px;margin-top: 2%;">Estimated Number of Days for Storage
+        <input *ngIf="invoiceTypee == 'advance'" type="text" class="inputNoOfDays" (input)="changeDetect()" placeholder="Enter Days" name="daysCount"
+          [(ngModel)]="storedFornumeberOfDays">
+          <input *ngIf="invoiceTypee == 'afterDel'" disabled="true" type="text" class="inputNoOfDays" (input)="changeDetect()" placeholder="Enter Days" name="daysCount"
+          [(ngModel)]="storedFornumeberOfDays">
+         </p>
+      <p style="font-size: 13px;
+    color: grey;margin-top: -5px;">(Min 7 Days and max 3 months for advance payment)</p>
+      <p class="mainBoldTitle" *ngIf="invoiceTypee == 'advance'">Estimated Invoice Amount: Rs {{totalAmount}}</p>
+      <p class="mainBoldTitle" *ngIf="invoiceTypee == 'afterDel'">Total Payable Due: Rs {{totalAmount}}</p>
+      <p class="mainBoldTitle">Treatments</p>
+      <p class="valueV"><span style="width: 100px;
+        display: inline-block;">Fumigation</span> <input type="checkbox" [checked]="fumigation"
+          (change)="fumigation = !fumigation; changeStatus()">
+        <p class="valueV"><span style="width: 100px;
+          display: inline-block;">Spraying</span> <input type="checkbox" [checked]="spraying"
+            (change)="spraying = !spraying; changeStatusS()">
+        </p>
+        <div *ngIf="vars">
+          <p class="mainBoldTitle" style="margin-top: 15px;">Invoice Breakup</p>
+          <p class="valueV">Per Bag rate for {{appdetails.commodityName}} : Rs {{vars.perBagRate}}</p>
+          <p class="valueV">Per Tonne rate for {{appdetails.commodityName}} : Rs {{vars.perTonneRate}}</p>
+          <p class="valueV">Rent for {{storedFornumeberOfDays}} Days : Rs {{vars.perDayRate * storedFornumeberOfDays}}
+          </p>
+          <p class="valueV">Insurance Slab : Rs {{vars.insuranceSlab}}</p>
+          <p class="mainBoldTitle" style="margin-top: 1%;
+      margin-bottom: 0;">GST</p>
+          <p class="valueV" *ngIf="gstType == 'igst'">IGST @18% : Rs {{igstAmt}}</p>
+          <p class="valueV" *ngIf="gstType == 'cgst'">
+            CGST @9% : Rs {{cgstAmt}}<br>
+            SGST @9% : Rs {{sgstAmt}}
+          </p>
+        </div>
+        <div class="row">
+          <div class="col-6">
+            <p class="viewInvoiceBtn" *ngIf="!generateInvoiceBtnClicked" (click)="viewInvoice()">Generate Invoice</p>
+            <p class="viewInvoiceBtn" *ngIf="generateInvoiceBtnClicked"><i class="fa fa-spin fa-circle-o-notch"></i>
+            </p>
+          </div>
+        </div>
+    </div>
+    <div *ngIf="invoiceTypee == 'afterDel' && !newDeliveryExist">
+      <p>No New Deliveries Found.</p>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="invoice" style="padding-top: 2%;
+      background-color: whitesmoke;height: 100%;">
+  <div *ngIf="wDetails" style="margin: 0% 5%;
+        padding: 20px;
+        background-color: white;
+        box-shadow: 0 0 10px 10px #e8e8e866;">
+    <p style="background-color: #96b73d;
+    height: 45px;"><i class="fa fa-arrow-left" style="color: white;
+    font-size: 20px;
+    position: absolute;
+    margin-top: 1%;
+    margin-left: 1%;
+    cursor:pointer;" (click)="goback()"></i> </p>
+    <p class="invoiceMT">{{wDetails.wname}}</p>
+    <p class="invoiceMT2">{{wDetails.address.addressL1}}, {{wDetails.address.district}}, {{wDetails.address.state}} -
+      {{wDetails.address.pincode}}</p>
+    <div class="row">
+      <div class="col-6">
+
+      </div>
+      <div class="col-6">
+        <div class="row" style="margin-top: 3%;">
+          <div class="col-6" style="text-align: right;">
+            <p class="mainBoldTitle" style="margin-bottom: 3px;">CIN No :</p>
+            <p class="mainBoldTitle" style="margin-bottom: 3px;">PAN No :</p>
+            <p class="mainBoldTitle" style="margin-bottom: 3px;">GSTIN No :</p>
+          </div>
+          <div class="col-6">
+            <p class="valueV">{{wDetails.cinNo}}</p>
+            <p class="valueV">{{wDetails.panNo}}</p>
+            <p class="valueV">{{wDetails.gstNo}}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="margin: 2% 5%;">
+      <div class="col-6">
+        <div class="row jgfghftyt">
+          <div class="col-3" style="padding: 0;">
+            <p>CIN No</p>
+            <p>Address</p>
+            <p>State</p>
+            <p>GSTIN</p>
+          </div>
+          <div class="col-9" style="padding: 0;">
+            <p>{{cinNo || '-'}}</p>
+            <p>{{farmerDetails.address.addressl1}}, {{farmerDetails.address.district}},
+              {{farmerDetails.address.state}},
+              {{farmerDetails.address.pincode}}</p>
+            <p>{{farmerDetails.address.state || '-'}}</p>
+            <p>{{farmerDetails.gstNo || '-'}}</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-6" *ngIf="invoiceCu">
+        <div class="row jgfghftyt">
+          <div class="col-3" style="padding: 0;">
+            <p>Invoice No</p>
+            <p>Invoice Date</p>
+            <p>State Code</p>
+            <p>PAN</p>
+          </div>
+          <div class="col-9" style="padding: 0;">
+            <p>{{invoiceCu.invoiceNumber || '-'}}</p>
+            <p>{{invoiceCu.timestamp | date:'mediumDate' || '-'}}</p>
+            <p>{{farmerDetails.address.state || '-'}}</p>
+            <p>{{farmerDetails.panNo || '-'}}</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="row" style="margin: 2% 5%;">
+      <div class="col-6">
+        <div class="row jgfghftyt">
+          <div class="col-3" style="padding: 0;">
+            <p>Sr. No.</p>
+            <p>1</p>
+            <p>2</p>
+            <p>3</p>
+          </div>
+          <div class="col-9" style="padding: 0;">
+            <p>Description of Services</p>
+            <p>Storage of Commodity</p>
+            <p>Fumigation</p>
+            <p>Spraying</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-6" *ngIf="invoiceCu">
+        <div class="row jgfghftyt">
+          <div class="col-4" style="padding: 0;">
+            <p>Commodity</p>
+            <p>{{invoiceCu.commodityName}}</p>
+            <p></p>
+            <p></p>
+          </div>
+          <div class="col-4" style="padding: 0;">
+            <p>Quantity</p>
+            <p>{{invoiceCu.quantity}} {{invoiceCu.depositUom}}</p>
+            <p></p>
+            <p></p>
+          </div>
+          <div class="col-4" style="padding: 0;">
+            <p>Amount</p>
+            <p>Rs {{getTotalAmountForDis(invoiceCu)}}</p>
+            <p>
+              <span *ngIf="invoiceCu.fumigation">Rs {{vars.fumigation}}</span>
+              <span *ngIf="!invoiceCu.fumigation">-</span>
+            </p>
+            <p>
+              <span *ngIf="invoiceCu.spraying">Rs {{vars.spraying}}</span>
+              <span *ngIf="!invoiceCu.spraying">-</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="mainBoldTitle" style="margin-top: 1%;padding-left: 5%;
+      margin-bottom: 0;">GST</p>
+          <p class="valueV" style="padding-left: 5%;margin-bottom:15px;" *ngIf="invoiceCu.gstDetails.gstType == 'igst'">IGST @18% : Rs {{invoiceCu.gstDetails.gstAmount}}</p>
+          <p class="valueV" style="padding-left: 5%;margin-bottom:15px;" *ngIf="invoiceCu.gstDetails.gstType == 'cgst'">
+            CGST @9% : Rs {{invoiceCu.gstDetails.gstAmount/2}}<br>
+            SGST @9% : Rs {{invoiceCu.gstDetails.gstAmount/2}}
+          </p>
+    <p *ngIf="invoiceCu.status.paymentMethod" style="padding-left: 5%;
+    margin-bottom: 4px;display:inline-block">Payment Mode : {{invoiceCu.status.paymentMethod}}</p>
+    <p *ngIf="invoiceCu.status.paid" style="padding-right: 5%;
+    margin-bottom: 4px;float: right;">Total : Rs {{invoiceCu.estimatedAmount}}</p>
+    <p style="padding-left: 5%;
+    margin-bottom: 4px;">Status :
+      <span *ngIf="invoiceCu.status.paid" style="color: #1c942b;" class="paidOnv">Paid</span>
+      <span *ngIf="!invoiceCu.status.paid" class="paidOnv">Unpaid</span>
+    </p>
+    <p class="viewInvoiceBtn" (click)="printINvv()">Print Invoice</p>
+  </div>
+</div>
+
+<div class="modal fade" id="uploadRec" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-body" *ngIf="invoiceCu" style="padding: 0;">
+        <p class="modalTitle">
+          Upload Receipt<i class="fa fa-times" style="float: right;
+          cursor: pointer;" (click)="closeModal('uploadRec')"></i>
+        </p>
+        <div style="padding: 21px;">
+          <p class="mainBoldTitle" style="font-weight: 700;margin-bottom: 23px;">Amount Paid by Customer : <input
+              type="text" class="inputNoOfDays" placeholder="Enter Amount" name="amtPaidByCst"
+              [(ngModel)]="amtPaidByCst"></p>
+          <p class="mainBoldTitle" style="display: inline-block;font-weight: 700;">Payment Mode</p>
+          <select [(ngModel)]="paymentType" name="paymentType" id="paymentType" style="border: none;
+        border-radius: 5px;
+        padding: 8px;
+        width: 59%;
+        background-color: whitesmoke;
+        color: #495057;
+        margin-left: 2%;">
+            <option value="">Select Payment Method</option>
+            <option value="online">Online</option>
+            <option value="cash">Cash</option>
+          </select>
+          <div *ngIf="!invoiceCu.status.paid">
+            <p *ngIf="!invRec && user?.userPermissions?.hasWriteAccess" style="font-size: 13px;
+            text-align: center;margin: 22px 0;cursor: pointer;" (click)="selectInvRec()">
+              <i class="fa fa-picture-o" style="font-size: 13px; margin-right: 4px;"></i>
+              Click here to upload Receipt
+            </p>
+            <input style="display: none;" id="uploadInvRec" type="file" name="ldocs" accept=".pdf"
+              (change)="changeListenerInvRec($event)" />
+            <p *ngIf="invRec" style="font-size: 13px;text-align: center;margin: 22px 0;">
+              {{ invRecFile.name }}
+              <i class="fa fa-times" (click)="changeFileinvrec()"></i>
+            </p>
+          </div>
+
+          <div *ngIf="!invoiceCu.status.paid" style="text-align: center; margin-bottom: 0px;">
+            <button *ngIf="!submitbtnClicked" type="button" style="width: 200px; margin: 0px 10px;"
+              class="btn btn--main mr-2" (click)="uploadReceipt()">
+              Upload
+            </button>
+            <button *ngIf="submitbtnClicked" type="button" style="width: 200px; margin: 0px 10px;"
+              class="btn btn--main mr-2">
+              <i class="fa fa-spin fa-circle-o-notch"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
